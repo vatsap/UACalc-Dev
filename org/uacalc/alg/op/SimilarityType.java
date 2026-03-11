@@ -1,0 +1,148 @@
+/* SimilarityType.java (c) 2003/01/03  Ralph Freese */
+
+package org.uacalc.alg.op;
+
+import java.util.*;
+import java.math.*;
+
+/**
+ * A set of OperationSymbol's.
+ */
+public class SimilarityType {
+
+  public static final SimilarityType LATTICE_SIMILARITY_TYPE;
+  static {
+    List<OperationSymbol> opsyms = new ArrayList<OperationSymbol>(2);
+    opsyms.add(OperationSymbol.JOIN);
+    opsyms.add(OperationSymbol.MEET);
+    LATTICE_SIMILARITY_TYPE = new SimilarityType(opsyms);
+  }
+
+  public static final SimilarityType GROUP_SIMILARITY_TYPE;
+  static {
+    List<OperationSymbol> opsyms = new ArrayList<OperationSymbol>(3);
+    opsyms.add(OperationSymbol.PRODUCT);
+    opsyms.add(OperationSymbol.INVERSE);
+    opsyms.add(OperationSymbol.IDENTITY);
+    GROUP_SIMILARITY_TYPE = new SimilarityType(opsyms);
+  }
+
+  List<OperationSymbol> operationSymbols;
+  Map<Integer,Integer> aritiesMap;
+  int maxArity = -1;
+
+  public SimilarityType(List<OperationSymbol> opSyms) {
+    this(opSyms, false);
+  }
+  
+  public SimilarityType(List<OperationSymbol> opSyms, boolean sort) {
+    if (sort) Collections.sort(opSyms);
+    this.operationSymbols = opSyms;
+  }
+
+  public List<OperationSymbol> getOperationSymbols() { 
+    return operationSymbols; 
+  }
+  
+  /**
+   * The sorting is by lowest arity first then by alphabetical
+   * on the name.
+   * 
+   * @return a sorted list of operations.
+   */
+  public List<OperationSymbol> getSortedOperationSymbols() {
+    Collections.sort(operationSymbols);
+    return operationSymbols; 
+  }
+  
+  /**
+   * This calculates the (computer) input size. If it exceeds 
+   * the max int value, it returns -1; If there are no operations
+   * it returns the algebra size.
+   * 
+   * @param algSize the algebra size
+   * @return the input size if it is an int
+   */
+  public int inputSize(int algSize) {
+    if (operationSymbols.size() == 0) return algSize;
+    BigInteger inputSize = BigInteger.ZERO;
+    final BigInteger algebraSize = BigInteger.valueOf((long)algSize);
+    final BigInteger max = BigInteger.valueOf((long)Integer.MAX_VALUE);
+    for (OperationSymbol sym : operationSymbols) {
+      inputSize = inputSize.add(algebraSize.pow(sym.arity()));
+      if (inputSize.compareTo(max) >= 0) return -1;
+    }
+    return (int)inputSize.longValue();
+  }
+  
+  /**
+   * A map from the arity to the number of ops of that arity.
+   * @return
+   */
+  public Map<Integer,Integer> getAritiesMap() {
+    if (aritiesMap != null) return aritiesMap; 
+    aritiesMap = new TreeMap<Integer,Integer>();
+    for (OperationSymbol sym : operationSymbols) {
+      final int k = sym.arity();
+      maxArity = Math.max(maxArity, k);
+      if (aritiesMap.get(k) == null) aritiesMap.put(k, 1);
+      else aritiesMap.put(k, 1 + aritiesMap.get(k));
+    }
+    return aritiesMap;
+  }
+  
+  public int getMaxArity() {
+    getAritiesMap();
+    return maxArity;
+  }
+
+  public String toString() {
+    StringBuffer sb = new StringBuffer("(");
+    for (Iterator<OperationSymbol> it = operationSymbols.iterator(); 
+                                                         it.hasNext(); ) {
+      sb.append(it.next().toString());
+      if (it.hasNext()) sb.append(", ");
+    }
+    sb.append(")");
+    return sb.toString();
+  }
+  
+  public String aritiesString() {
+    StringBuffer sb = new StringBuffer();
+    final int k = getMaxArity();
+    for (int i = k; i >= 0; i--) {
+      if (getAritiesMap().get(i) != null) {
+        if (i != k) sb.append(", ");
+        int num = getAritiesMap().get(i);
+        String aryString;
+        if (i == 1) aryString = "unary (" + num + ")";
+        else if (i == 2) aryString = "binary: (" + num + ")";
+        else aryString = "" + i + "-ary (" + num + ")";
+        sb.append(aryString);
+      }
+    }
+    return sb.toString();
+  }
+
+  public boolean equals(Object obj) {
+    if (!(obj instanceof SimilarityType)) return false;
+    if (this == obj) return true;
+    //SimilarityType st = (SimilarityType)obj;
+    List<OperationSymbol> ops = ((SimilarityType)obj).getOperationSymbols();
+    if (ops.size() != operationSymbols.size()) return false;
+    for (OperationSymbol op : operationSymbols) {
+      if (!ops.contains(op)) return false;
+    }
+    return true;
+  }
+
+  public int hashCode() {
+    return operationSymbols.hashCode();
+  }
+
+
+}
+
+
+
+

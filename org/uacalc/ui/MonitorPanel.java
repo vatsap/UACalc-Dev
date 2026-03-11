@@ -1,0 +1,174 @@
+package org.uacalc.ui;
+
+import javax.swing.JPanel;
+import javax.swing.JTextArea;
+import javax.swing.event.*;
+import java.awt.Insets;
+import javax.swing.*;
+import javax.swing.table.*;
+import java.awt.event.*;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.util.*;
+import org.uacalc.ui.tm.*;
+import org.uacalc.ui.table.*;
+
+public class MonitorPanel extends JPanel {
+  
+  private UACalculator uacalc;
+  private ProgressReport report;
+  //private TaskRunner runner;
+  
+  // the one that is currently displayed
+  //BackgroundTask task;
+  // a list of all
+  //List<BackgroundTask> tasks = new ArrayList<BackgroundTask> ();
+  
+  private final JTextArea logArea;
+  private final JTextField passField;
+  private final JTextField sizeField;
+  private final JTextField descField;
+  private final JTextField passSizeField;
+  private TaskTableModel model = new TaskTableModel(this);
+  private final JTable taskTable = new JTable(model);
+
+  public MonitorPanel(UACalculator uacalc) {
+    this.uacalc = uacalc;
+    setLayout(new BorderLayout());
+    setupTaskTable();
+    logArea = new JTextArea(10, 50);
+    logArea.setMargin(new Insets(5, 5, 5, 5));
+    logArea.setEditable(false);
+    logArea.setAutoscrolls(true);
+    JLabel passLabel = new JLabel("Pass: ");
+    JLabel sizeLabel = new JLabel("Size: ");
+    JLabel currentSizeLabel = new JLabel("Now: ");
+    passField = new JTextField(6);
+    sizeField = new JTextField(12);
+    passSizeField = new JTextField(12);
+    descField = new JTextField(30);
+    JButton cancelButton  = new JButton("Cancel");
+    cancelButton.setActionCommand("cancel");
+    cancelButton.addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+          System.out.println("getTask(): " + getTask());
+          if (getTask() != null) {
+            //System.out.println("cancelling ...");
+            getTask().cancel(true);
+            //runner.cancel(true);
+            //monitor.setCancelled(true);
+            //monitor.printlnToLog("...cancelling...");
+          }
+        }
+      });
+    JButton clearButton = new JButton("Clear");
+    clearButton.addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+          logArea.setText(null);
+        }
+      });
+    
+    JPanel topPanel = new JPanel();
+    taskTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+    taskTable.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+      public void valueChanged(ListSelectionEvent e) {
+        int k = taskTable.getSelectedRow();
+        //int k = e.getFirstIndex();
+        System.out.println("first index = " + k + ", tasks: " + getTaskList().size());
+        if (k < 0 || k >= getTaskList().size()) return;
+        setTask(getTaskList().get(k)); 
+        setProgressReport(getTask().getProgressReport());
+      }
+    });
+    JScrollPane taskPane = new JScrollPane(taskTable,
+        ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+        ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+    taskPane.setPreferredSize(new Dimension(300,75));
+    topPanel.setLayout(new BorderLayout());
+    topPanel.add(new JScrollPane(taskTable, 
+        ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+        ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED), BorderLayout.CENTER);
+    //topPanel.add(descField);
+    //topPanel.add(passLabel);
+    //topPanel.add(passField);
+    //topPanel.add(sizeLabel);
+    //topPanel.add(passSizeField);
+    //topPanel.add(currentSizeLabel);
+    //topPanel.add(sizeField);
+    add(topPanel, BorderLayout.NORTH);
+    topPanel.add(new JScrollPane(logArea), BorderLayout.NORTH);
+    JPanel botPanel = new JPanel();
+    botPanel.setLayout(new BoxLayout(botPanel, BoxLayout.X_AXIS));
+    botPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+    botPanel.add(Box.createHorizontalGlue());
+    botPanel.add(cancelButton);
+    botPanel.add(Box.createRigidArea(new Dimension(10, 0)));
+    botPanel.add(clearButton);
+    topPanel.add(botPanel, BorderLayout.SOUTH);
+    
+    //add(botPanel, BorderLayout.SOUTH);
+    setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+    report = new ProgressReport(this);
+    //uacalc.setMonitor(monitor);
+  }
+  
+  private void setupTaskTable() {
+    taskTable.setRowSelectionAllowed(true);
+    taskTable.setColumnSelectionAllowed(false);
+    taskTable.setAutoResizeMode( JTable.AUTO_RESIZE_OFF);
+    taskTable.setPreferredSize(new Dimension(300, 75));
+    TableColumn column = null;
+    for (int i = 0; i < model.getColumnCount(); i++) {
+      column = taskTable.getColumnModel().getColumn(i);
+      if (i == 0) {
+        column.setPreferredWidth(150);
+        column.setMinWidth(75);
+      }
+      else {
+        column.setPreferredWidth(75);
+        column.setMinWidth(30);
+      }
+    }
+  }
+  
+  public JTextField getDescriptionField() { return descField; }
+  public JTextField getPassField() { return passField; }
+  public JTextField getPassSizeField() { return passSizeField; }
+  public JTextField getSizeField() { return sizeField; }
+  public JTextArea getLogArea() { return logArea; }
+  
+  
+  public ProgressReport getProgressReport() { return report; }
+  
+  public void setProgressReport(ProgressReport m) {
+    report = m;
+    descField.setText(m.getDescription());
+    passField.setText(String.valueOf(m.getPass()));
+    passSizeField.setText(String.valueOf(m.getPassSize()));
+    sizeField.setText(String.valueOf(m.getSize()));
+    logArea.setText(null);
+    for (String s : m.getLogLines()) {
+      final String nl = "\n";
+      logArea.append(s + nl);
+    }
+    repaint();
+  }
+  
+  
+  public BackgroundTask<?> getTask() { return model.getCurrentTask(); }
+  public void setTask(BackgroundTask<?> v) { model.setCurrentTask(v); }
+  
+  public void addTask(BackgroundTask<?> task) {
+    addTask(task, true);
+  }
+  
+  public void addTask(BackgroundTask<?> task, boolean makecurrent) {
+    model.addTask(task);
+    if (makecurrent) setTask(task);
+  }
+  
+  public List<BackgroundTask<?>> getTaskList() { return model.getTasks(); }
+  
+  public TaskTableModel getTaskTableModel() { return model; }
+  
+}
