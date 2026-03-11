@@ -36,6 +36,16 @@ public abstract class AbstractOperation implements Operation {
     this.symbol = symbol;
     this.algSize = algSize;
   }
+  //duplicate construcor method
+  public AbstractOperation(AbstractOperation other) {
+    this.symbol = other.symbol;
+    this.algSize = other.algSize;
+  }
+
+
+  public void setSymbol(OperationSymbol sym) {
+    symbol = sym;
+  }
 
 
   /**

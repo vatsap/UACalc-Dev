@@ -47,7 +47,7 @@ public class SubController {
     if (gAlg == null) return;
     SmallAlgebra alg = gAlg.getAlgebra();
     if (alg == null) return;
-    final int subTabIndex = 4;
+    final int subTabIndex = 5;
     if (uacalcUI.getTabbedPane().getSelectedIndex() != subTabIndex) {
       uacalcUI.getTabbedPane().setSelectedIndex(subTabIndex);
       uacalcUI.repaint();

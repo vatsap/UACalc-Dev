@@ -56,11 +56,11 @@ public class GUIAlgebra {
     }
   }
   
+  
   public GUIAlgebra(SmallAlgebra alg, File file) {
     this(alg);
     this.file = file;
   }
-  
   /**
    * We should use this constructor when we want to specify the parents.
    * For example, if we have an algebra on the GUIAlgebraList and we

@@ -52,6 +52,8 @@ public class LatDrawer extends JPanel {
   private Vertex selectedElem;
   
   private List<Vertex> selectedElemList;
+
+  private boolean isUpSideDown = false;
   
   //private static final Dimension scrollDim = new Dimension(200, 250);
 
@@ -300,6 +302,31 @@ public class LatDrawer extends JPanel {
         drawPanel.setImproveDelay(50);
       }
     });
+
+    JMenu exportMenu = mb.add(new JMenu("Export"));
+    JCheckBoxMenuItem upSideDownItem = new JCheckBoxMenuItem("Up side down", false);
+    JMenuItem tikzExport = new JMenuItem("Tikz Export");
+    exportMenu.add(tikzExport);
+    exportMenu.add(upSideDownItem);
+    /* 
+    tikzExport.addActionListener(new ActionListener() {
+      public void actionPerformed(ActionEvent e) {
+        System.out.println("clicked!");
+        uacalc.getMainController().saveTikzAs(getDiagram());
+      }
+    });*/
+
+    upSideDownItem.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            setUpsideDown(upSideDownItem.isSelected());
+        }
+    });
+
+    tikzExport.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            tikzExportActionPerformed(evt);
+        }
+    });
     
     toolBar = makeToolBar();
     //appPanel = new JPanel();
@@ -321,7 +348,11 @@ public class LatDrawer extends JPanel {
   }
   
  
-  
+  public boolean getUpsideDown() { return isUpSideDown; }
+
+  private void setUpsideDown(boolean b){
+    this.isUpSideDown = b;
+  }
   
 
   public UACalc getUACalc() { return uacalc; }
@@ -924,6 +955,10 @@ public class LatDrawer extends JPanel {
     filters.setToolTipText("filters of highlighted elem");
     mdecomp.setToolTipText("an irredundant meet decomposition of highlighted elem or 0");
     
+    toolBar.addSeparator();
+    JCheckBox reverse_ord = new JCheckBox("Reversed order", false);
+    toolBar.add(reverse_ord);
+    
     jis.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
         setBelowType(RadioButtonType.JI);
@@ -980,6 +1015,12 @@ public class LatDrawer extends JPanel {
         resetVertexColors();
       }
     });
+
+    reverse_ord.addActionListener(new ActionListener() {
+      public void actionPerformed(ActionEvent e) {
+        System.out.println("set: " + reverse_ord.isSelected());
+      }
+    });
     
     mdecomp.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
@@ -1005,6 +1046,10 @@ public class LatDrawer extends JPanel {
   public Vertex one() {
     return getDiagram().vertexForPOElem(getBasicLattice().one());
   }
+
+  private void tikzExportActionPerformed(java.awt.event.ActionEvent evt) {                                       
+    uacalc.getMainController().saveTikzAs(getDiagram());
+  }  
 
   private void showUpperCovers() {
     Vertex v = getSelectedElem();

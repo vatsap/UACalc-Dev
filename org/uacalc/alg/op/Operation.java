@@ -4,6 +4,8 @@ package org.uacalc.alg.op;
 
 import java.util.List;
 
+import org.uacalc.alg.SmallAlgebra;
+
 /**
  * This interface specifies an operation, that is, a map from 
  * the direct product of some number (called the arity) of a set
@@ -20,6 +22,10 @@ public interface Operation extends Comparable<Operation> {
    * This gives the arity of this operation.
    */
   public int arity();
+
+  default Operation duplicate() {
+    throw new UnsupportedOperationException("Duplication not implemented for: " + this.getClass());
+  }
 
   /**
    * This gives the size of the set upon which the operation is defined.
@@ -118,6 +124,8 @@ public interface Operation extends Comparable<Operation> {
    * @return
    */
   public boolean isTotal();
+
+  public void setSymbol(OperationSymbol sym);
 
 }
 

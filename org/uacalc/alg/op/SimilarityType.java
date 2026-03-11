@@ -27,6 +27,12 @@ public class SimilarityType {
     GROUP_SIMILARITY_TYPE = new SimilarityType(opsyms);
   }
 
+  public String normalizedKey() {
+    List<OperationSymbol> ops = new ArrayList<>(operationSymbols);
+    Collections.sort(ops);
+    return ops.toString();
+  }
+
   List<OperationSymbol> operationSymbols;
   Map<Integer,Integer> aritiesMap;
   int maxArity = -1;
@@ -101,6 +107,17 @@ public class SimilarityType {
     for (Iterator<OperationSymbol> it = operationSymbols.iterator(); 
                                                          it.hasNext(); ) {
       sb.append(it.next().toString());
+      if (it.hasNext()) sb.append(", ");
+    }
+    sb.append(")");
+    return sb.toString();
+  }
+
+  public String toStringWithArities() {
+    StringBuffer sb = new StringBuffer("(");
+    for (Iterator<OperationSymbol> it = operationSymbols.iterator(); 
+                                                         it.hasNext(); ) {
+      sb.append(it.next().toString(true));
       if (it.hasNext()) sb.append(", ");
     }
     sb.append(")");

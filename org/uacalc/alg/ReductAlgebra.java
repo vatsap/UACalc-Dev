@@ -9,6 +9,7 @@ import org.uacalc.terms.*;
 import org.uacalc.alg.SmallAlgebra.AlgebraType;
 import org.uacalc.alg.conlat.*;
 import org.uacalc.alg.op.Operation;
+import org.uacalc.alg.op.OperationSymbol;
 import org.uacalc.alg.sublat.*;
 
 /**
@@ -122,6 +123,10 @@ public class ReductAlgebra extends GeneralAlgebra implements SmallAlgebra {
 
   public AlgebraType algebraType() {
     return AlgebraType.REDUCT;
+  }
+  
+  public void renameOperation(OperationSymbol old_op_sym, String new_symbol){
+
   }
 
   public static void main(String[] args) throws java.io.IOException,

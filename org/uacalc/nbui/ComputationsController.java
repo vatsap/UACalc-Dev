@@ -197,7 +197,7 @@ public class ComputationsController {
     resetCancelDelButton();
     uacalcUI.getLogTextArea().setText(null);
     // 2 is the computations tab index.
-    final int comTabIndex = 2;
+    final int comTabIndex = 3;
     if (uacalcUI.getTabbedPane().getSelectedIndex() != comTabIndex) {
       uacalcUI.getTabbedPane().setSelectedIndex(comTabIndex);
       uacalcUI.repaint();

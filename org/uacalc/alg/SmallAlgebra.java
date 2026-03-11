@@ -3,11 +3,14 @@
 package org.uacalc.alg;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Map;
 
 import org.uacalc.alg.conlat.CongruenceLattice;
+import org.uacalc.alg.op.Operation;
+import org.uacalc.alg.op.OperationSymbol;
 import org.uacalc.alg.sublat.SubalgebraLattice;
 
 /**
@@ -31,6 +34,8 @@ public interface SmallAlgebra extends Algebra {
    * 
    * @return
    */
+
+
   public AlgebraType algebraType();
   
   /**
@@ -88,6 +93,8 @@ public interface SmallAlgebra extends Algebra {
    * This is used in the UI. Only valid for BASIC algebras.
    */
   public void convertToDefaultValueOps();
+
+
   
   
 }

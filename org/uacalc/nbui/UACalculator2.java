@@ -13,15 +13,24 @@ import org.uacalc.ui.table.*;
 import org.uacalc.ui.util.*;
 import org.uacalc.alg.*;
 import org.uacalc.alg.conlat.*;
+import org.uacalc.alg.op.OperationSymbol;
+import org.uacalc.alg.op.OperationWithDefaultValue;
 import org.uacalc.io.*;
 
 public class UACalculator2 extends JFrame implements UACalc {
   
   private javax.swing.JButton addOpButton;
+  private javax.swing.JButton renameOpButton;
   private javax.swing.JMenuItem algFileMI;
+  private javax.swing.JMenuItem latexExport;
+  private javax.swing.JMenuItem latexFullExport;
+  private JPanel bottomAlgListHolder;
   private javax.swing.JTable algListTable;
   private javax.swing.JTextField algNameTextField;
+  //algebras panel
   private javax.swing.JPanel algebrasPanel;
+  private javax.swing.JPanel algebrasLeftPanel;
+  private javax.swing.JPanel algebrasMainPanel; 
   private javax.swing.JMenuItem builtInAlgsMI;
   private javax.swing.JButton cancelCompButton;
   private javax.swing.JTextField cardTextField;
@@ -33,9 +42,15 @@ public class UACalculator2 extends JFrame implements UACalc {
   private javax.swing.JPanel conLeftPanel;
   private javax.swing.JPanel conMainPanel;
   private javax.swing.JPanel conPanel;
+  //relations panels
+  private javax.swing.JPanel relationsMainPanel;
+  private javax.swing.JPanel relationsPanel;
+
   private javax.swing.JButton conTableButton;
   private javax.swing.JPanel currentAlgPanel;
   private javax.swing.JComboBox defaultEltComboBox;
+  private javax.swing.JPanel buttonPanel1;
+  private javax.swing.JButton dupAlg;
   private javax.swing.JButton delAlg;
   private javax.swing.JButton delOpButton;
   private javax.swing.JTextField descTextField;
@@ -54,6 +69,8 @@ public class UACalculator2 extends JFrame implements UACalc {
   private javax.swing.JTable elemKeyTable;
   private javax.swing.JScrollPane elemKeyScrollPane;
   private javax.swing.JMenu fileMenu;
+  private javax.swing.JMenu relationsMenu;
+  private javax.swing.JMenuItem relationsMI;
   private javax.swing.JMenuItem freeAlgMI;
   private javax.swing.JMenu helpMenu;
   private javax.swing.JMenuItem helpInstructionsMI;
@@ -125,6 +142,8 @@ public class UACalculator2 extends JFrame implements UACalc {
   private javax.swing.JTable resultTable;
   private javax.swing.JTextField resultTextField;
   private javax.swing.JMenu saveAsMenu;
+  private javax.swing.JMenu batchExport;
+  private javax.swing.JMenuItem latexBatchExport;
   private javax.swing.JMenuItem saveMI;
   private javax.swing.JPanel subLeftPanel;
   private javax.swing.JMenuItem subMI;
@@ -181,6 +200,10 @@ public class UACalculator2 extends JFrame implements UACalc {
     initComponents();
 
     actions = new MainController(this);
+    actions.getAlgebrasController().refreshSignaturesFromOpenAlgebras();
+    actions.getAlgebrasController().applySignatureFilter();
+
+
 
     /*  Screws up macs
     try {
@@ -245,6 +268,7 @@ public class UACalculator2 extends JFrame implements UACalc {
     opsComboBox = new javax.swing.JComboBox();
     delOpButton = new javax.swing.JButton();
     addOpButton = new javax.swing.JButton();
+    renameOpButton = new javax.swing.JButton();
     makeBasicAlgButton = new javax.swing.JButton();
     makeBasicAlgButton.setEnabled(false);
     opTableScrollPane = new javax.swing.JScrollPane();
@@ -266,6 +290,7 @@ public class UACalculator2 extends JFrame implements UACalc {
     algebrasPanel = new javax.swing.JPanel();
     currentAlgPanel = new javax.swing.JPanel();
     computationsPanel = new javax.swing.JPanel();
+
     
     elemKeyScrollPane = new javax.swing.JScrollPane();
     elemKeyTable = new javax.swing.JTable();
@@ -333,16 +358,29 @@ public class UACalculator2 extends JFrame implements UACalc {
     algListTable.setGridColor(Color.BLACK);
     jLabel6 = new javax.swing.JLabel();
     msgTextField = new javax.swing.JTextField();
+
+    buttonPanel1 = new JPanel(new MigLayout("wrap 1, aligny center", "[right]", ""));
+    bottomAlgListHolder = new JPanel(new BorderLayout(8, 0));
+    bottomAlgListHolder.add(jScrollPane5, BorderLayout.CENTER);
+    bottomAlgListHolder.add(buttonPanel1, BorderLayout.EAST);
+    dupAlg = new javax.swing.JButton();
     delAlg = new javax.swing.JButton();
+
     jMenuBar1 = new javax.swing.JMenuBar();
     fileMenu = new javax.swing.JMenu();
+    relationsMenu = new javax.swing.JMenu();
+    relationsMI = new javax.swing.JMenuItem();
     builtInAlgsMI = new javax.swing.JMenuItem();
     newMI = new javax.swing.JMenuItem();
     openMI = new javax.swing.JMenuItem();
     saveMI = new javax.swing.JMenuItem();
     saveAsMenu = new javax.swing.JMenu();
+    batchExport = new javax.swing.JMenu();
+    latexBatchExport = new javax.swing.JMenuItem();
     uaFileMI = new javax.swing.JMenuItem();
     algFileMI = new javax.swing.JMenuItem();
+    latexExport = new javax.swing.JMenuItem();
+    latexFullExport = new javax.swing.JMenuItem();
     tableCSVMI = new javax.swing.JMenuItem();
     logTextAreaMI = new javax.swing.JMenuItem();
     quitMI = new javax.swing.JMenuItem();
@@ -445,6 +483,13 @@ public class UACalculator2 extends JFrame implements UACalc {
             addOpButtonActionPerformed(evt);
         }
     });
+
+    renameOpButton.setText("Rename");
+    renameOpButton.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            renameOpButtonActionPerformed(evt);
+        }
+    });
     
     makeBasicAlgButton.setText("Make into Basic Alg");
     makeBasicAlgButton.setToolTipText("Make a basic (editable) copy");
@@ -480,9 +525,19 @@ public class UACalculator2 extends JFrame implements UACalc {
    
     initEditorPanel();
     tabbedPane.addTab("Editor", editorPanel);
-    
-    initAlgebrasPanel();
+  
+
+    algebrasPanel = new javax.swing.JPanel();
+    algebrasLeftPanel = new javax.swing.JPanel();
+    algebrasMainPanel = new javax.swing.JPanel();
+
     tabbedPane.addTab("Algebras", algebrasPanel);
+    
+    //relations panel init
+    relationsPanel = new javax.swing.JPanel();
+    relationsMainPanel = new javax.swing.JPanel();
+    
+    tabbedPane.addTab("Relations", relationsPanel);
     
     /*
     resultPane.setBorder(javax.swing.BorderFactory.createTitledBorder("Results"));
@@ -580,6 +635,12 @@ xxx;
     msgTextField.setText("Welcome to the Universal Algebra Calculator! " 
         + "For instructions use Help -> Instructions.");
     
+    dupAlg.setText("Duplicate");
+    dupAlg.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            dupAlgActionPerformed(evt);
+        }
+    });
     delAlg.setText("Delete");
     delAlg.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -654,7 +715,41 @@ xxx;
     });
     saveAsMenu.add(algFileMI);
 
+    latexExport.setText("latex file (only tables)");
+    latexExport.setToolTipText("");
+    latexExport.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            latexExportActionPerformed(evt);
+        }
+    });
+    saveAsMenu.add(latexExport);
+
+    latexFullExport.setText("latex file (with picture)");
+    latexFullExport.setToolTipText("");
+    latexFullExport.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            latexFullExportActionPerformed(evt);
+        }
+    });
+    saveAsMenu.add(latexFullExport);
+
     fileMenu.add(saveAsMenu);
+
+    batchExport.setIcon(new javax.swing.ImageIcon(getClass().getResource("/org/uacalc/ui/images/SaveAs16.gif"))); // NOI18N
+    batchExport.setText("Batch export");
+
+    latexBatchExport.setText("Latex");
+    latexBatchExport.setToolTipText("");
+    latexBatchExport.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            latexBatchExportActionPerformed(evt);
+        }
+    });
+    batchExport.add(latexBatchExport);
+
+
+    fileMenu.add(batchExport);
+
     
     tableCSVMI.setIcon(new javax.swing.ImageIcon(getClass().getResource("/org/uacalc/ui/images/Save16.gif"))); // NOI18N
     tableCSVMI.setText("Save Results Table");
@@ -1120,6 +1215,17 @@ xxx;
     equationsMenu.add(commutivityCheckerMI);
  
     jMenuBar1.add(equationsMenu);
+
+    //Relations menu set-up
+    relationsMenu.setText("Relations");
+    relationsMI.setText("Open Relations");
+    relationsMI.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        relationsMIActionPerformed(evt);
+      }
+    });
+    relationsMenu.add(relationsMI);
+    jMenuBar1.add(relationsMenu);
  
     
     drawingMenu.setText("Drawing");
@@ -1184,6 +1290,21 @@ xxx;
     
 
     setJMenuBar(jMenuBar1);
+
+    // Algebras Tab
+    MigLayout algMainLay = new MigLayout("wrap, fill, insets 10");
+    getAlgebrasMainPanel().setLayout(algMainLay);
+    MigLayout algLayout = new MigLayout("wrap 2, fill, insets 10");
+    getAlgebrasPanel().setLayout(algLayout);
+    getAlgebrasPanel().add(getAlgebrasLeftPanel(), "grow");
+    getAlgebrasPanel().add(getAlgebrasMainPanel(), "grow");
+    MigLayout algLeftLay = new MigLayout("wrap, fill, insets 10");
+    getAlgebrasLeftPanel().setLayout(algLeftLay);
+
+    // Relations Tab
+    MigLayout relLayout = new MigLayout("wrap 2, fill, insets 10");
+    getRelationsPanel().setLayout(relLayout);
+    getRelationsPanel().add(getRelationsMainPanel(), "grow");
     
     // Con Tab
     MigLayout conLayout = new MigLayout("wrap 2, fill, insets 10");
@@ -1233,10 +1354,12 @@ xxx;
     
     add(tabbedPane, "height 400:600:, grow 82"); //, "grow 75");
     
-    //add
-    add(jScrollPane5, "height 100:150:250, grow 18, split 2");
-    add(delAlg, "align center");
+    buttonPanel1.add(dupAlg, "align left, sg buttons");
+    buttonPanel1.add(delAlg, "align left, sg buttons");
 
+    //add
+    add(bottomAlgListHolder, "height 100:150:250, grow 18");
+    
 
     //msg area:
     add(new JLabel("Msg:"), "split 2");
@@ -1279,6 +1402,7 @@ xxx;
     upper.add(opsComboBox);
     upper.add(delOpButton);
     upper.add(addOpButton);
+    upper.add(renameOpButton);
     upper.add(makeBasicAlgButton, "wrap 15");
     upper.add(opTableScrollPane, "width 300:2000:, span, wrap");
     upper.add(idempotentCB, "gapx 50");
@@ -1295,11 +1419,6 @@ xxx;
     edSplitPane.setBorder(null);
     editorPanel.setLayout(new BorderLayout());
     editorPanel.add(edSplitPane, BorderLayout.CENTER);
-  }
-  
-  private void initAlgebrasPanel() {
-    algebrasPanel.setLayout(new MigLayout());
-    algebrasPanel.add(new JLabel("Coming soon"), "align center, width 100:800:, wrap");
   }
   
   private void initComputationPanel() {
@@ -1484,7 +1603,6 @@ xxx;
   public JComboBox getOpsComboBox() {
     return opsComboBox;
   }
-
    
   public JTable getResultTable() {
     return resultTable;
@@ -1500,6 +1618,15 @@ xxx;
     return subMainPanel;
   }
 
+  public javax.swing.JPanel getRelationsPanel() {
+    return relationsPanel;
+  }
+
+
+  public javax.swing.JPanel getRelationsMainPanel() {
+    return relationsMainPanel;
+  }
+
    
   public JTabbedPane getTabbedPane() {
     return tabbedPane;
@@ -1507,6 +1634,10 @@ xxx;
   
   public JButton getAddOpButton() {
     return addOpButton;
+  }
+
+   public JButton getRenameOpButton(){
+    return renameOpButton;
   }
   
   public JButton getDelOpButton() {
@@ -1547,7 +1678,20 @@ xxx;
 
   private void algFileMIActionPerformed(java.awt.event.ActionEvent evt) {                                       
     getMainController().saveAs(org.uacalc.io.ExtFileFilter.ALG_EXT);
-  }                                       
+  }    
+  
+  private void latexExportActionPerformed(java.awt.event.ActionEvent evt) {                                       
+    getMainController().saveLatexAs(org.uacalc.io.ExtFileFilter.TEX_EXT);
+  }  
+
+  private void latexBatchExportActionPerformed(java.awt.event.ActionEvent evt) {
+    System.out.println("Latex Batch Exporter");
+    getMainController().setUpBatchDialog();
+  }  
+
+  private void latexFullExportActionPerformed(java.awt.event.ActionEvent evt) {                                   
+    getMainController().saveFullLatexAs(org.uacalc.io.ExtFileFilter.TEX_EXT);
+  }  
 
   private void newAlgButtonActionPerformed(java.awt.event.ActionEvent evt) {
     getAlgebraEditorController().makeNewAlgebra();
@@ -1559,6 +1703,10 @@ xxx;
 
   private void addOpButtonActionPerformed(java.awt.event.ActionEvent evt) {
     getAlgebraEditorController().addOp();
+  }
+
+  private void renameOpButtonActionPerformed(java.awt.event.ActionEvent evt) {
+    getAlgebraEditorController().renameOp();
   }
   
   private void makeBasicAlgButtonActionPerformed(java.awt.event.ActionEvent evt) {
@@ -1652,6 +1800,10 @@ xxx;
   private void pixleyMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pixleyMIActionPerformed
     getComputationsController().setupPixleyTermTask();
   }//GEN-LAST:event_pixleyMIActionPerformed
+
+  private void relationsMIActionPerformed(java.awt.event.ActionEvent evt) {
+    getRelationsController().showRelationsTab();
+  }
 
   private void drawConMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_drawConMIActionPerformed
     getConController().drawCon();
@@ -1813,12 +1965,24 @@ xxx;
     getComputationsController().setupGenCommutivityCheckTask();
   }
 
+  private void dupAlgActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_delAlgActionPerformed
+    getMainController().duplicateCurrentAlgebra();
+  }//GEN-LAST:event_delAlgActionPerformed
+
   private void delAlgActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_delAlgActionPerformed
     getMainController().removeCurrentAlgebra();
   }//GEN-LAST:event_delAlgActionPerformed
 
   public AlgebraEditorController getAlgebraEditorController() {
     return getMainController().getAlgebraEditorController();
+  }
+
+  public AlgebrasController getAlgebrasController() {
+    return getMainController().getAlgebrasController();
+  }
+
+  public RelationsController getRelationsController() {
+    return getMainController().getRelationsController();
   }
   
   public ConController getConController() {
@@ -1835,6 +1999,14 @@ xxx;
 
   public javax.swing.JPanel getAlgebrasPanel() {
     return algebrasPanel;
+  }
+
+  public javax.swing.JPanel getAlgebrasLeftPanel() {
+    return algebrasLeftPanel;
+  }
+
+  public javax.swing.JPanel getAlgebrasMainPanel() {
+    return algebrasMainPanel;
   }
 
   public javax.swing.JPanel getComputationsLogPane() {

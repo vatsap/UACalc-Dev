@@ -29,6 +29,7 @@ public class AbstractIntOperation extends AbstractOperation {
     throw new UnsupportedOperationException();
   }
 
+
   /**
    * @param args
    */

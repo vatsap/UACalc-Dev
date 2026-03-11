@@ -35,6 +35,10 @@ public class OperationWithDefaultValue extends AbstractOperation {
     //System.out.println(valueTable);
     setDiagDiv();
   }
+
+  public OperationSymbol getSymbol(){
+    return op.symbol();
+  }
   
   public OperationWithDefaultValue(String name, int arity, int algSize, 
                                         int defaultValue) {

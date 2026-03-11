@@ -32,7 +32,7 @@ public class SubalgebraLattice implements Lattice {
   
   private String description;
   
-  public static final int MAX_DRAWABLE_SIZE = 100;
+  public static final int MAX_DRAWABLE_SIZE = 500;
   private boolean nonDrawable = false;
   
   private CongruenceLattice con;

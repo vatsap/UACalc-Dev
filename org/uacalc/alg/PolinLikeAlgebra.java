@@ -242,6 +242,9 @@ public class PolinLikeAlgebra extends GeneralAlgebra implements SmallAlgebra {
       System.out.println(it.next());
     }
   }
+  public void renameOperation(OperationSymbol old_op_sym, String new_symbol){
+    
+  }
 
 }
 

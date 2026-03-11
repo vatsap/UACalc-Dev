@@ -539,7 +539,10 @@ public class  BasicLattice extends GeneralAlgebra
       frame.setVisible(true);
     }
   }
-
+  
+  public void renameOperation(OperationSymbol old_op_sym, String new_symbol){
+    
+  }
 
 
 }

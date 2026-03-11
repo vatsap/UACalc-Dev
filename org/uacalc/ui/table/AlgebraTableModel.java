@@ -13,7 +13,7 @@ public class AlgebraTableModel extends AbstractTableModel {
   private final GUIAlgebraList algebraList = new GUIAlgebraList();
   
   private static final String[] columnNames = new String[] {
-    "Internal", "Name", "Type", "Description", "File"};
+    "Internal", "Name", "Type", "Signature","Cardinality","File"};
   
   public void addAlgebra(SmallAlgebra alg) {
     getAlgebraList().add(alg);
@@ -32,7 +32,7 @@ public class AlgebraTableModel extends AbstractTableModel {
   }
   
   public int getColumnCount() {
-    return 5;
+    return 6;
   }
 
   public int getRowCount() {
@@ -46,7 +46,8 @@ public class AlgebraTableModel extends AbstractTableModel {
     if (columnIndex == 0) return gAlg.toString();
     if (columnIndex == 1) return gAlg.getAlgebra().getName();
     if (columnIndex == 2) return gAlg.getAlgebra().algebraType();
-    if (columnIndex == 3) return gAlg.getAlgebra().getDescription();
+    if (columnIndex == 3) return gAlg.getAlgebra().similarityType();
+    if (columnIndex == 4) return gAlg.getAlgebra().cardinality();
     //System.out.println("file: " + gAlg.getFile());
     final String dirtyString = gAlg.needsSave() ? "** " : "";
     if (gAlg.getFile() != null) return  dirtyString + gAlg.getFile().getName();

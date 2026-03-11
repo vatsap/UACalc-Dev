@@ -14,7 +14,7 @@ import org.uacalc.lat.*;
 
 public class DrawingController {
   
-  public static final int MAX_DRAWABLE_SIZE = 100;
+  public static final int MAX_DRAWABLE_SIZE = 500;
   private final UACalc uacalcUI;
   private LatDrawer latDrawer;
   
@@ -55,12 +55,29 @@ public class DrawingController {
     if (gAlg == null) return;
     SmallAlgebra alg = gAlg.getAlgebra();
     if (alg == null) return;
-    final int algDrawTabIndex = 5;
+    final int algDrawTabIndex = 6;
     if (uacalcUI.getTabbedPane().getSelectedIndex() != algDrawTabIndex) {
       uacalcUI.getTabbedPane().setSelectedIndex(algDrawTabIndex);
       uacalcUI.repaint();
     }
     drawAlg(gAlg, true);
+  }
+
+  public boolean isDrawable(GUIAlgebra gAlg, boolean makeIfNull) {
+    if (makeIfNull) {
+      if (!gAlg.getAlgebra().isTotal()) {
+        return false;
+      }
+      SmallAlgebra alg = gAlg.getAlgebra();
+      if (alg.cardinality() > MAX_DRAWABLE_SIZE) {
+        return false;
+      }
+    }
+    BasicLattice lat = gAlg.getCurrentLattice(makeIfNull);
+    if (makeIfNull && lat == null) {
+      return false;
+    }
+    return true;
   }
   
   public void drawAlg(GUIAlgebra gAlg, boolean makeIfNull) {
@@ -110,6 +127,5 @@ public class DrawingController {
     if (makeIfNull) getLatDrawer().getDrawPanel().improve();
     getLatDrawer().repaint();
   }
-  
 
 }

@@ -74,6 +74,7 @@ public class BasicAlgebra extends GeneralAlgebra implements SmallAlgebra {
    * This constructs a SmallAlgebra from a ordered list of elements. The
    * operations need to have intValueAt(int[]) implemented.
    */
+
   public BasicAlgebra(String name, List univ, List<Operation> operations) {
 // not tested yet
     super(name, new HashSet(univ));
@@ -100,6 +101,9 @@ public class BasicAlgebra extends GeneralAlgebra implements SmallAlgebra {
     }
     setOperations(ops);
   }
+
+
+
 
   public List getUniverseList() { return universeList; }
   public void setUniverseList(List lst) { universeList = lst; }
@@ -159,7 +163,6 @@ public class BasicAlgebra extends GeneralAlgebra implements SmallAlgebra {
     setOperations(opsDV);
     //operations = opsDV;
   }
-  
   
   
   public AlgebraType algebraType() {

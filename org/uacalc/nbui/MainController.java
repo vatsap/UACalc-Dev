@@ -6,13 +6,15 @@ import javax.swing.event.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
+import java.util.List;
 import java.io.*;
+import java.nio.file.Files;
 import java.util.prefs.*;
 import java.beans.PropertyChangeSupport;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeEvent;
 
-
+import org.latdraw.diagram.*;
 import org.uacalc.alg.*;
 import org.uacalc.alg.op.Operation;
 import org.uacalc.alg.op.OperationWithDefaultValue;
@@ -25,6 +27,7 @@ import org.uacalc.ui.*;
 import org.uacalc.ui.table.*;
 import org.uacalc.ui.util.*;
 import org.uacalc.ui.tm.ProgressReport;
+import org.uacalc.io.lua.*;
 
 
 public class MainController {
@@ -45,6 +48,8 @@ public class MainController {
   private String currentFolder;
   private AlgebraEditorController algEditorController;
   private ComputationsController computationsController;
+  private RelationsController relationsController;
+  private AlgebrasController algebrasController;
   private ConController conController;
   private SubController subController;
   private DrawingController drawingController;
@@ -63,6 +68,8 @@ public class MainController {
     propertyChangeSupport = new PropertyChangeSupport(this);
     algEditorController = new AlgebraEditorController(uacalcUI);
     computationsController = new ComputationsController(uacalcUI);
+    relationsController = new RelationsController(uacalcUI, propertyChangeSupport);
+    algebrasController = new AlgebrasController(uacalcUI);
     conController = new ConController(uacalcUI, propertyChangeSupport);
     subController = new SubController(uacalcUI, propertyChangeSupport);
     drawingController = new DrawingController(uacalcUI, propertyChangeSupport);
@@ -73,25 +80,36 @@ public class MainController {
   private void setupAlgTable() {
     final JTable algTable = uacalcUI.getAlgListTable();
     algTable.setModel(algebraTableModel);
-    TableColumn col = algTable.getColumnModel().getColumn(0);
+    TableColumn col = algTable.getColumnModel().getColumn(0); // Internal
     col.setPreferredWidth(60);
-    col.setMinWidth(60);
-    col = algTable.getColumnModel().getColumn(1);
-    col.setPreferredWidth(120);
+    col.setMinWidth(50);
+
+    col = algTable.getColumnModel().getColumn(1); // Name
+    col.setPreferredWidth(160);
     col.setMinWidth(120);
-    col = algTable.getColumnModel().getColumn(2);
-    col.setPreferredWidth(120);
+
+    col = algTable.getColumnModel().getColumn(2); // Type
+    col.setPreferredWidth(160);
     col.setMinWidth(120);
-    col = algTable.getColumnModel().getColumn(3);
-    col.setPreferredWidth(480);
-    col.setMinWidth(480);
-    col = algTable.getColumnModel().getColumn(4);
-    col.setPreferredWidth(120);
-    col.setMinWidth(120);
+
+
+    col = algTable.getColumnModel().getColumn(3); // Signature
+    col.setPreferredWidth(200);
+    col.setMinWidth(160);
+
+    col = algTable.getColumnModel().getColumn(4); // Cardinality
+    col.setPreferredWidth(70);
+    col.setMinWidth(50);
+
+    col = algTable.getColumnModel().getColumn(5); // File
+    col.setPreferredWidth(220);
+    col.setMinWidth(160);
     algTable.getSelectionModel().addListSelectionListener(new javax.swing.event.ListSelectionListener() {
       public void valueChanged(ListSelectionEvent e) {
-        int index = algTable.getSelectedRow();
-        GUIAlgebra gAlg = algebraList.get(index);
+        int viewIndex = algTable.getSelectedRow();
+        if (viewIndex < 0) return;
+        int modelIndex = algTable.convertRowIndexToModel(viewIndex);
+        GUIAlgebra gAlg = algebraList.get(modelIndex);
         //System.out.println("curr alg = " + getCurrentAlgebra());
         //System.out.println("gAlg = " + gAlg);
         //System.out.println("curr alg equals gAlg is " + gAlg.equals(getCurrentAlgebra()));
@@ -311,6 +329,16 @@ public class MainController {
 
   }
 */
+
+
+  public void algebraStructureChanged() {
+    if (algebrasController == null) return;
+    javax.swing.SwingUtilities.invokeLater(() -> {
+      algebrasController.refreshSignaturesFromOpenAlgebras();
+      algebrasController.applySignatureFilter();
+    });
+  }
+
   
   public GUIAlgebra addAlgebra(SmallAlgebra alg, boolean makeCurrent) {
     return addAlgebra(alg, null, makeCurrent);
@@ -336,14 +364,26 @@ public class MainController {
    * Right now the list of algebras is maintained the algebraTableModel.
    * We may want to change that.
    */
+  
   public GUIAlgebra addAlgebra(GUIAlgebra gAlg, boolean makeCurrent) {
-    final int index = getAlgebraList().size();
     getAlgebraList().add(gAlg, makeCurrent);
-    // Note: the revalidate, repaint is the key
-    if (makeCurrent) uacalcUI.getAlgListTable().setRowSelectionInterval(index, index);
-    uacalcUI.getAlgListTable().revalidate();
-    scrollToBottom(uacalcUI.getAlgListTable());
-    uacalcUI.getAlgListTable().repaint();
+
+    final JTable algTable = uacalcUI.getAlgListTable();
+    algTable.revalidate();
+    scrollToBottom(algTable);
+    algTable.repaint();
+
+    javax.swing.SwingUtilities.invokeLater(() -> {
+      algebraStructureChanged();
+
+      if (makeCurrent) {
+        // wait until the filter/sorter refresh has run too
+        javax.swing.SwingUtilities.invokeLater(() -> {
+          selectAlgebraInTable(gAlg);
+        });
+      }
+    });
+
     return gAlg;
   }
   
@@ -364,6 +404,14 @@ public class MainController {
   
   public ComputationsController getComputationsController() {
     return computationsController;
+  }
+
+  public AlgebrasController getAlgebrasController() {
+    return algebrasController; 
+  }
+  
+  public RelationsController getRelationsController() {
+    return relationsController; 
   }
   
   public ConController getConController() {
@@ -586,7 +634,430 @@ public class MainController {
     }
     return false;
   }
-  
+
+  public boolean saveLatexAs(String ext) {
+    ext = "tex";
+    if (getCurrentAlgebra() == null) return true;
+    SmallAlgebra alg = getCurrentAlgebra().getAlgebra();
+    if (alg == null) return false;
+
+    for (Operation op : alg.operations()) {
+        if (op instanceof OperationWithDefaultValue) {
+            if (!((OperationWithDefaultValue) op).isTotal()) {
+                uacalcUI.beep();
+                JOptionPane.showMessageDialog(uacalcUI.getFrame(),
+                    "<html><center>Not all operations are total.<br>" +
+                    "Fill in the tables<br>" +
+                    "or set a default value.</center></html>",
+                    "Incomplete operation(s)",
+                    JOptionPane.WARNING_MESSAGE);
+            }
+        }
+    }
+
+    alg.setName(uacalcUI.getAlgNameTextField().getText());
+    alg.setDescription(getAlgebraEditorController().updateDescription());
+
+    String latex;
+    try {
+        Set<String> opNames = new LinkedHashSet<>();
+        for (Operation op : alg.operations()) {
+            opNames.add(op.symbol().name());
+        }
+        latex = latexExport(alg, opNames);
+    } catch (IOException | InterruptedException e) {
+        beep();
+        e.printStackTrace();
+        return false;
+    }
+
+    if (fileChooser == null) initFileChooser();
+    int option = fileChooser.showSaveDialog(uacalcUI.getFrame());
+    if (option == JFileChooser.APPROVE_OPTION) {
+        File selectedFile = fileChooser.getSelectedFile();
+        File f = selectedFile;
+        try {
+            String extension = ExtFileFilter.getExtension(f);
+            if (extension == null || !extension.equals(ext)) {
+                f = new File(f.getCanonicalPath() + "." + ext);
+            }
+
+            if (f.exists()) {
+                Object[] options = {"Yes", "No"};
+                int n = JOptionPane.showOptionDialog(uacalcUI.getFrame(),
+                        "The file already exists. Overwrite?", "File Exists",
+                        JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null,
+                        options, options[0]);
+                if (n == JOptionPane.NO_OPTION) {
+                    return saveLatexAs(ext); // retry
+                }
+            }
+
+            Files.writeString(f.toPath(), latex);
+            getPrefs().put("latexExportDir", f.getParent());
+            uacalcUI.repaint();
+            return true;
+        } catch (IOException e) {
+            beep();
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    return false; // user canceled 
+  }
+
+  public boolean saveFullLatexAs(String ext) {
+    ext = "tex";
+    getDrawingController().getLatDrawer().repaint();
+    boolean reversed = getDrawingController().getLatDrawer().getUpsideDown();
+    GUIAlgebra gui_alg = getCurrentAlgebra();
+    if (gui_alg == null) return true;
+    SmallAlgebra alg = getCurrentAlgebra().getAlgebra();
+    if (alg == null) return false;
+
+    for (Operation op : alg.operations()) {
+        if (op instanceof OperationWithDefaultValue) {
+            if (!((OperationWithDefaultValue) op).isTotal()) {
+                uacalcUI.beep();
+                JOptionPane.showMessageDialog(uacalcUI.getFrame(),
+                    "<html><center>Not all operations are total.<br>" +
+                    "Fill in the tables<br>" +
+                    "or set a default value.</center></html>",
+                    "Incomplete operation(s)",
+                    JOptionPane.WARNING_MESSAGE);
+            }
+        }
+    }
+
+    if (getDrawingController().isDrawable(gui_alg, true)) {
+      getDrawingController().drawAlg();
+    } else {
+      uacalcUI.getMainController().beep();
+      uacalcUI.getMainController().setUserWarning(
+          "This algebra is not drawable!", false);
+      return false;
+    }
+
+    alg.setName(uacalcUI.getAlgNameTextField().getText());
+    alg.setDescription(getAlgebraEditorController().updateDescription());
+
+    String latex;
+    try {
+        Set<String> opNames = new LinkedHashSet<>();
+        for (Operation op : alg.operations()) {
+            opNames.add(op.symbol().name());
+        }
+        latex = latexExport(alg, opNames);
+    } catch (IOException | InterruptedException e) {
+        beep();
+        e.printStackTrace();
+        return false;
+    }
+    Diagram diagram = getDrawingController().getLatDrawer().getDiagram();
+    String tikz = "";
+    if (diagram != null ){
+      try {
+          tikz = tikzExport(diagram, alg.getName(), reversed, false);
+      } catch (IOException | InterruptedException e) {
+          beep();
+          e.printStackTrace();
+          return false;
+      }
+    }
+    String output = latex + "\n\n" + tikz;
+
+
+    if (fileChooser == null) initFileChooser();
+    int option = fileChooser.showSaveDialog(uacalcUI.getFrame());
+    if (option == JFileChooser.APPROVE_OPTION) {
+        File selectedFile = fileChooser.getSelectedFile();
+        File f = selectedFile;
+        try {
+            String extension = ExtFileFilter.getExtension(f);
+            if (extension == null || !extension.equals(ext)) {
+                f = new File(f.getCanonicalPath() + "." + ext);
+            }
+
+            if (f.exists()) {
+                Object[] options = {"Yes", "No"};
+                int n = JOptionPane.showOptionDialog(uacalcUI.getFrame(),
+                        "The file already exists. Overwrite?", "File Exists",
+                        JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null,
+                        options, options[0]);
+                if (n == JOptionPane.NO_OPTION) {
+                    return saveFullLatexAs(ext); // retry
+                }
+            }
+
+            Files.writeString(f.toPath(), output);
+            getPrefs().put("latexExportDir", f.getParent());
+            uacalcUI.repaint();
+            return true;
+        } catch (IOException e) {
+            beep();
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    return false; // user canceled 
+  }
+
+  public boolean saveTikzAs(Diagram diagram) {
+    boolean reversed = getDrawingController().getLatDrawer().getUpsideDown();
+    String ext = "tex";
+    if (getCurrentAlgebra() == null) return true;
+    SmallAlgebra alg = getCurrentAlgebra().getAlgebra();
+    if (alg == null) return false;
+
+
+    alg.setName(uacalcUI.getAlgNameTextField().getText());
+    alg.setDescription(getAlgebraEditorController().updateDescription());
+
+    String tikz;
+    try {
+        tikz = tikzExport(diagram, alg.getName(), reversed, false);
+    } catch (IOException | InterruptedException e) {
+        beep();
+        e.printStackTrace();
+        return false;
+    }
+
+    if (fileChooser == null) initFileChooser();
+    int option = fileChooser.showSaveDialog(uacalcUI.getFrame());
+    if (option == JFileChooser.APPROVE_OPTION) {
+        File selectedFile = fileChooser.getSelectedFile();
+        File f = selectedFile;
+        try {
+            String extension = ExtFileFilter.getExtension(f);
+            if (extension == null || !extension.equals(ext)) {
+                f = new File(f.getCanonicalPath() + "." + ext);
+            }
+
+            if (f.exists()) {
+                Object[] options = {"Yes", "No"};
+                int n = JOptionPane.showOptionDialog(uacalcUI.getFrame(),
+                        "The file already exists. Overwrite?", "File Exists",
+                        JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null,
+                        options, options[0]);
+                if (n == JOptionPane.NO_OPTION) {
+                    return saveLatexAs(ext); // retry
+                }
+            }
+
+            Files.writeString(f.toPath(), tikz);
+            getPrefs().put("latexExportDir", f.getParent());
+            uacalcUI.repaint();
+            return true;
+        } catch (IOException e) {
+            beep();
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    return false; // user canceled 
+  }
+
+  //exporter calls
+  public String tikzExport(Diagram diagram, String captionText, boolean reversed, boolean labelInsideVertex) throws IOException, InterruptedException {
+    if (diagram == null) return "";
+    DiagramData data = new DiagramData();
+    data.collectVertexAndEdgeData(diagram);
+    data.roundAndScaleData(10.0, 6.0);
+    if (reversed == true) {data.upSideDown();}
+    TikzExporter tikzExp = new TikzExporter(data.verticesLabels, data.vertices, data.edges, captionText, labelInsideVertex);
+    return tikzExp.runLua(); 
+  }
+
+  //helper pro předání informací o selektovaných operací pro lua
+  private static String buildOpsHeader(Set<String> opNames) {
+    if (opNames == null) return "";
+    // rozhodnutí: když je prázdný set -> exportuj NIC (pošleme prázdný blok)
+    StringBuilder sb = new StringBuilder();
+    sb.append("<uacalcExportOps>\n");
+    for (String s : opNames) {
+      sb.append("  <op>").append(s).append("</op>\n");
+    }
+    sb.append("</uacalcExportOps>");
+    return sb.toString();
+  }
+
+
+  public String latexExport(SmallAlgebra alg, Set<String> selectedOps) throws IOException, InterruptedException {
+    File f = File.createTempFile("tempAlg", ".ua");
+    try {
+        AlgebraIO.writeAlgebraFile(alg, f, false);
+        String fileContent = Files.readString(f.toPath());
+        String payload = buildOpsHeader(selectedOps) + "\n" + fileContent;
+        TexExporter texExp = new TexExporter(payload);
+        return texExp.runLua();
+    } finally {
+        f.delete(); // clean up temp file
+    }
+  }
+
+  public void setUpBatchDialog() {
+    JFrame mainFrame = uacalcUI.getFrame();  // your main window
+    BatchExportDialog dialog = new BatchExportDialog(mainFrame, algebraList, this);
+    dialog.setVisible(true);
+  }
+
+  public void batchExportAlgebras(BatchAlgebraTableModel model, int[] rows, Set<String> selectedOps, File output, boolean singleFile, boolean tikzAlgebra, boolean labelInsideAlg, boolean reversedDraw, boolean tikzCon, boolean labelInsideCon, boolean tikzSub, boolean labelInsideSub) {
+    if (singleFile) {
+      exportToSingleFile(model, rows, selectedOps, output, tikzAlgebra, labelInsideAlg, reversedDraw, tikzCon, labelInsideCon, tikzSub, labelInsideSub);
+    } else {
+      exportToMultipleFiles(model, rows, selectedOps, output, tikzAlgebra, labelInsideAlg, reversedDraw, tikzCon, labelInsideCon, tikzSub, labelInsideSub);
+    }
+  }
+
+
+  public void exportToMultipleFiles(BatchAlgebraTableModel model, int[] rows, Set<String> selectedOps,  File folder, boolean tikzAlgebra, boolean labelInsideAlg, boolean reversedDraw, boolean tikzCon, boolean labelInsideCon, boolean tikzSub, boolean labelInsideSub) {
+      for (int row : rows) {
+          GUIAlgebra gAlg = model.getAlgebraAt(row);
+          exportToLatexFile(gAlg, folder, selectedOps, tikzAlgebra, labelInsideAlg, reversedDraw, tikzCon, labelInsideCon, tikzSub, labelInsideSub);
+      }
+  }
+
+  public void exportToLatexFile(GUIAlgebra gAlg, File folder, Set<String> selectedOps, boolean tikzAlgebra, boolean labelInsideAlg, boolean reversedDraw, boolean tikzCon, boolean labelInsideCon, boolean tikzSub, boolean labelInsideSub) {
+    SmallAlgebra alg = gAlg.getAlgebra();
+      String filename = alg.getName().replaceAll("\\s+", "_") + ".tex";
+      File outFile = new File(folder, filename);
+
+      try {
+        String latex = latexExport(alg, selectedOps);
+        StringBuilder tikzContent = new StringBuilder();
+        if(getDrawingController().isDrawable(gAlg, true) && tikzAlgebra == true) {
+          setCurrentAlgebra(gAlg);
+          getDrawingController().drawAlg();
+          String tikz = "";
+          Diagram diagram = getDrawingController().getLatDrawer().getDiagram();
+          if (diagram != null ){
+            try {
+              tikz = "\n\n" + tikzExport(diagram, alg.getName(), reversedDraw, labelInsideAlg);
+            } catch (IOException | InterruptedException e) {
+              beep();
+              e.printStackTrace();
+            }
+            tikzContent.append(tikz).append("\n");
+          }
+        }
+        if(tikzCon == true) {
+          setCurrentAlgebra(gAlg);
+          getConController().drawCon();
+          String tikz = "";
+          Diagram diagram = getConController().getConLatDrawer().getDiagram();
+          if (diagram != null ){
+            try {
+              tikz = "\n\n" + tikzExport(diagram, "Con("+alg.getName()+")", false, labelInsideCon);
+            } catch (IOException | InterruptedException e) {
+              beep();
+              e.printStackTrace();
+            }
+          }
+
+          tikzContent.append(tikz).append("\n");
+        }
+        if(tikzSub == true) {
+          setCurrentAlgebra(gAlg);
+          getSubController().drawSub();
+          String tikz = "";
+          Diagram diagram = getSubController().getSubLatDrawer().getDiagram();
+          if (diagram != null ){
+            try {
+              tikz = "\n\n" + tikzExport(diagram, "Sub("+alg.getName()+")", false, labelInsideSub);
+            } catch (IOException | InterruptedException e) {
+              beep();
+              e.printStackTrace();
+            }
+          }
+          tikzContent.append(tikz).append("\n");
+        }
+        // Ensure parent directory exists
+        outFile.getParentFile().mkdirs();
+        Files.writeString(outFile.toPath(), latex+tikzContent.toString());
+      } catch (IOException | InterruptedException ex) {
+          JOptionPane.showMessageDialog(
+              uacalcUI.getFrame(),
+              "Error exporting " + alg.getName() + ": " + ex.getMessage(),
+              "Export Error",
+              JOptionPane.ERROR_MESSAGE
+          );
+      }
+    }
+
+  public void exportToSingleFile(BatchAlgebraTableModel model, int[] rows, Set<String> selectedOps, File outputFile, boolean tikzAlgebra, boolean labelInsideAlg, boolean reversedDraw, boolean tikzCon, boolean labelInsideCon, boolean tikzSub, boolean labelInsideSub) {
+    try {
+        StringBuilder allContent = new StringBuilder();
+        for (int row : rows) {
+            GUIAlgebra gAlg = model.getAlgebraAt(row);
+            SmallAlgebra alg = gAlg.getAlgebra();
+            if((tikzAlgebra ? 1:0) + (tikzCon ? 1 : 0) + (tikzSub ? 1 : 0) >1 && row != rows[0]){
+              allContent.append("\\clearpage");
+            }
+            allContent.append("% Export: ").append(alg.getName()).append("\n");
+            allContent.append(latexExport(alg, selectedOps));
+            String tikz = "";
+            if(getDrawingController().isDrawable(gAlg, true) && tikzAlgebra == true) {
+              setCurrentAlgebra(gAlg);
+              getDrawingController().drawAlg();
+              Diagram diagram = getDrawingController().getLatDrawer().getDiagram();
+              if (diagram != null ){
+                try {
+                  tikz = "\n\n" + tikzExport(diagram, alg.getName(), reversedDraw, labelInsideAlg);
+                } catch (IOException | InterruptedException e) {
+                  beep();
+                  e.printStackTrace();
+                }
+              }
+            }
+            allContent.append(tikz).append("\n");
+            if(tikzCon == true) {
+              setCurrentAlgebra(gAlg);
+              getConController().drawCon();
+              Diagram diagram = getConController().getConLatDrawer().getDiagram();
+              if (diagram != null ){
+                try {
+                  tikz = "\n\n" + tikzExport(diagram, "Con("+alg.getName()+")", false, labelInsideCon);
+                } catch (IOException | InterruptedException e) {
+                  beep();
+                  e.printStackTrace();
+                }
+              }
+              allContent.append(tikz).append("\n");
+            }
+            
+            if(tikzSub == true) {
+              setCurrentAlgebra(gAlg);
+              getSubController().drawSub();
+              Diagram diagram = getSubController().getSubLatDrawer().getDiagram();
+              if (diagram != null){
+                try {
+                  tikz = "\n\n" + tikzExport(diagram, "Sub("+alg.getName()+")", false, labelInsideSub);
+                } catch (IOException | InterruptedException e) {
+                  beep();
+                  e.printStackTrace();
+                }
+              }
+              allContent.append(tikz).append("\n");
+            }
+          }
+        // Ensure parent directory exists
+        outputFile.getParentFile().mkdirs();
+        Files.writeString(outputFile.toPath(), allContent.toString());
+    } catch (IOException | InterruptedException e) {
+        JOptionPane.showMessageDialog(
+            uacalcUI.getFrame(),
+            "Export error: " + e.getMessage(),
+            "Export Error",
+            JOptionPane.ERROR_MESSAGE
+        );
+    }
+  }
+
+
+
   public boolean writeLogTextArea() {
     JTextArea textArea = uacalcUI.getLogTextArea();
     if (textArea == null) return false;
@@ -823,6 +1294,7 @@ public class MainController {
         else addAlgebra(a, file, false);
       }
     }
+    algebraStructureChanged();
   }
   
   public void loadBuiltIn() {
@@ -872,6 +1344,7 @@ public class MainController {
       setCurrentAlgebra(addAlgebra(a, null, true));
       uacalcUI.repaint();
     }
+    algebraStructureChanged();
   }
   
   public void switchAlgebra(GUIAlgebra gAlg) {
@@ -888,27 +1361,97 @@ public class MainController {
     uacalcUI.getAlgListTable().revalidate();
     scrollToBottom(uacalcUI.getAlgListTable());
     uacalcUI.getAlgListTable().repaint();
+
+    algebraStructureChanged();
+  }
+
+  //duplicate algebra workaround: saving temp and loading,renaming.
+  //In java it is complicated to do deepcopy
+  public void duplicateCurrentAlgebra() {
+    GUIAlgebra current = getCurrentAlgebra();
+    if (current == null) return; // add this check too to be safe
+    SmallAlgebra alg = current.getAlgebra();
+    if (alg instanceof BasicAlgebra) {
+      try {
+        File f = File.createTempFile("tempAlg", ".ua");
+        try {
+          AlgebraIO.writeAlgebraFile(alg, f, false);
+          open(f);
+          SmallAlgebra copied_alg = getCurrentAlgebra().getAlgebra();
+          copied_alg.setName(alg.getName() + " (copy)");
+        } finally {
+          f.delete();
+          getCurrentAlgebra().setFile(null);
+          getCurrentAlgebra().needsSave();
+
+        }
+      } catch (IOException ex) {
+        ex.printStackTrace();
+      }
+    } else {
+      setTimedMessage("You can duplicate only a Basic Algebra!");
+    }
+    algebraStructureChanged();
   }
   
   public void setCurrentAlgebra(SmallAlgebra alg) {
     setCurrentAlgebra(new GUIAlgebra(alg));
   }
-  
+
+  private void selectAlgebraInTable(GUIAlgebra target) {
+    if (target == null) return;
+
+    JTable algTable = uacalcUI.getAlgListTable();
+    if (algTable == null) return;
+
+    int modelIndex = -1;
+    for (int i = 0; i < algebraList.size(); i++) {
+      if (algebraList.get(i) == target) {
+        modelIndex = i;
+        break;
+      }
+    }
+
+    if (modelIndex < 0) {
+      algTable.clearSelection();
+      return;
+    }
+
+    int viewIndex = -1;
+    try {
+      if (algTable.getRowSorter() != null) {
+        viewIndex = algTable.convertRowIndexToView(modelIndex);
+      } else {
+        viewIndex = modelIndex;
+      }
+    } catch (RuntimeException ex) {
+      viewIndex = -1;
+    }
+
+    if (viewIndex >= 0 && viewIndex < algTable.getRowCount()) {
+      algTable.setRowSelectionInterval(viewIndex, viewIndex);
+      algTable.scrollRectToVisible(algTable.getCellRect(viewIndex, 0, true));
+    } else {
+      // row is probably filtered out
+      algTable.clearSelection();
+    }
+  }
+
   public void setCurrentAlgebra(GUIAlgebra alg) {
-    //if (isDirty()) checkSave();
+    if (alg == null) return;
     currentAlgebra = alg;
     setTitle();
-    // TODO: fix this
-    //getLatDrawPanel().setDiagram(null);
+
+    javax.swing.SwingUtilities.invokeLater(() -> selectAlgebraInTable(alg));
+
     final int idx = uacalcUI.getTabbedPane().getSelectedIndex();
-    getConController().drawCon(alg.getAlgebra(), idx == 3 ? true : false);
-    //getConController().getConLatDrawer().getDrawPanel().improve();
+    getConController().drawCon(alg.getAlgebra(), idx == 4 ? true : false);
     uacalcUI.setEmptyOpTableModel();
     getAlgebraEditorController().setAlgebra(alg);
-    getSubController().drawSub(alg.getAlgebra(), idx == 4 ? true : false);
-    getDrawingController().drawAlg(alg, idx == 5 ? true : false);
+    getRelationsController().refreshImpForCurrentAlgebra();
+    getSubController().drawSub(alg.getAlgebra(), idx == 5 ? true : false);
+    getDrawingController().drawAlg(alg, idx == 6 ? true : false);
   }
-  
   public Random getRandom() {
     return random;
   }

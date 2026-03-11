@@ -8,6 +8,7 @@ import java.util.logging.*;
 import org.uacalc.util.*;
 import org.uacalc.alg.conlat.*;
 import org.uacalc.alg.op.Operation;
+import org.uacalc.alg.op.OperationSymbol;
 import org.uacalc.alg.sublat.SubalgebraLattice;
 
 /**
@@ -160,6 +161,9 @@ public class PowerAlgebra extends ProductAlgebra implements SmallAlgebra {
 //    System.out.println("it took " + t);
 //
 //
+  }
+  public void renameOperation(OperationSymbol old_op_sym, String new_symbol){
+    
   }
 
 }

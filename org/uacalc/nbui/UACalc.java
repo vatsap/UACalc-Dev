@@ -69,14 +69,17 @@ public interface UACalc {
   public JButton getAddOpButton();
   
   public JButton getDelOpButton();
+
+  public JButton getRenameOpButton();
   
   public JButton getMakeBasicAlgButton();
   
   public JTable getElemKeyTable();
-  
-  
-  
-  
-  
+
+  public JPanel getRelationsMainPanel();
+
+  public JPanel getRelationsPanel();
+
+  public JPanel getAlgebrasPanel();
   
 }

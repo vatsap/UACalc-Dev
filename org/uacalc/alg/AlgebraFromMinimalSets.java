@@ -187,5 +187,8 @@ public class AlgebraFromMinimalSets extends BasicAlgebra implements
     }
     catch (Exception e) { e.printStackTrace(); }
   }
+  public void renameOperation(OperationSymbol old_op_sym, String new_symbol){
+    
+  }
 
 }

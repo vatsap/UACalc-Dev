@@ -13,6 +13,7 @@ import org.uacalc.ui.tm.ProgressReport;
 import org.uacalc.alg.SmallAlgebra.AlgebraType;
 import org.uacalc.alg.conlat.*;
 import org.uacalc.alg.op.Operation;
+import org.uacalc.alg.op.OperationSymbol;
 import org.uacalc.alg.op.Operations;
 import org.uacalc.alg.sublat.*;
 
@@ -455,6 +456,10 @@ public class FreeAlgebra extends SubProductAlgebra implements SmallAlgebra {
 
     FreeAlgebra alg2 = new FreeAlgebra("test", alg, pow);
     AlgebraIO.writeAlgebraFile(alg2, "/tmp/fr" + pow + ".xml");
+  }
+
+  public void renameOperation(OperationSymbol old_op_sym, String new_symbol){
+    
   }
 
 }

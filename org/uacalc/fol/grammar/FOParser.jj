@@ -1,0 +1,277 @@
+options {
+  STATIC = false;
+}
+
+PARSER_BEGIN(FOParser)
+package org.uacalc.fol.grammar;
+
+import java.io.StringReader;
+
+import org.uacalc.fol.Conjunction;
+import org.uacalc.fol.Disjunction;
+import org.uacalc.fol.EquationFormula;
+import org.uacalc.fol.Exists;
+import org.uacalc.fol.FOFormula;
+import org.uacalc.fol.ForAll;
+import org.uacalc.fol.Implication;
+import org.uacalc.fol.Negation;
+import org.uacalc.fol.Sentence;
+import org.uacalc.terms.Terms;
+import org.uacalc.terms.Variable;
+import org.uacalc.terms.VariableImp;
+
+public class FOParser {
+
+  public static FOFormula parseFormula(String s) throws ParseException {
+    FOParser p = new FOParser(new StringReader(s));
+    FOFormula f = p.Formula();
+    Token t = p.getNextToken();
+    if (t.kind != EOF) {
+      throw new ParseException("Unexpected trailing input: " + t.image);
+    }
+    return f;
+  }
+
+  public static Sentence parseSentence(String s) throws ParseException {
+    return new Sentence(parseFormula(s));
+  }
+
+  private EquationFormula makeEquationFormula(String s) throws ParseException {
+    if (s == null) {
+      throw new ParseException("Null atomic formula");
+    }
+
+    s = s.trim();
+    if (s.length() == 0) {
+      throw new ParseException("Empty atomic formula");
+    }
+
+    int eq = findTopLevelEquals(s);
+    if (eq < 0) {
+      throw new ParseException("Expected '=' in atomic formula: " + s);
+    }
+
+    String left = s.substring(0, eq).trim();
+    String right = s.substring(eq + 1).trim();
+
+    if (left.length() == 0 || right.length() == 0) {
+      throw new ParseException("Bad equation: " + s);
+    }
+
+    try {
+      return new EquationFormula(
+          Terms.stringToTerm(left),
+          Terms.stringToTerm(right)
+      );
+    }
+    catch (IllegalArgumentException e) {
+      throw new ParseException("Bad term in equation: " + s);
+    }
+  }
+
+  private int findTopLevelEquals(String s) throws ParseException {
+    int depth = 0;
+    int pos = -1;
+
+    for (int i = 0; i < s.length(); i++) {
+      char c = s.charAt(i);
+
+      if (c == '(') depth++;
+      else if (c == ')') depth--;
+      else if (c == '=' && depth == 0) {
+        if (pos >= 0) {
+          throw new ParseException("More than one top-level '=' in atomic formula: " + s);
+        }
+        pos = i;
+      }
+
+      if (depth < 0) {
+        throw new ParseException("Unbalanced parentheses in atomic formula: " + s);
+      }
+    }
+
+    if (depth != 0) {
+      throw new ParseException("Unbalanced parentheses in atomic formula: " + s);
+    }
+
+    return pos;
+  }
+
+  private String readAtomicText() throws ParseException {
+    StringBuilder sb = new StringBuilder();
+    int depth = 0;
+    boolean sawSomething = false;
+
+    while (true) {
+      Token t = getToken(1);
+
+      if (t.kind == EOF) {
+        break;
+      }
+
+      if (depth == 0) {
+        if (t.kind == AND || t.kind == OR || t.kind == IMPLIES || t.kind == RPAREN) {
+          break;
+        }
+      }
+
+      t = getNextToken();
+      sawSomething = true;
+      sb.append(t.image);
+
+      if (t.kind == LPAREN) depth++;
+      else if (t.kind == RPAREN) depth--;
+
+      if (depth < 0) {
+        throw new ParseException("Too many closing parentheses in atomic formula");
+      }
+    }
+
+    if (!sawSomething) {
+      throw new ParseException("Expected atomic formula");
+    }
+
+    if (depth != 0) {
+      throw new ParseException("Unbalanced parentheses in atomic formula");
+    }
+
+    return sb.toString().trim();
+  }
+}
+PARSER_END(FOParser)
+
+SKIP :
+{
+    " "
+  | "\t"
+  | "\n"
+  | "\r"
+}
+
+/*
+ * Keep this token set small.
+ * Terms.stringToTerm(...) already parses the internal term structure,
+ * so here we only need enough tokens to:
+ *   - parse formula operators / quantifiers
+ *   - preserve raw text for an equation atom
+ */
+TOKEN :
+{
+    < FORALL  : "all" >
+  | < EXISTS  : "exists" >
+  | < NOT     : "!" >
+  | < AND     : "&" >
+  | < OR      : "|" >
+  | < IMPLIES : "->" >
+  | < EQ      : "=" >
+  | < LPAREN  : "(" >
+  | < RPAREN  : ")" >
+  | < COMMA   : "," >
+  | < IDENT   : (["A"-"Z","a"-"z"]) (["A"-"Z","a"-"z","0"-"9","_"])* >
+}
+
+/* ---------- entry ---------- */
+
+FOFormula Formula() :
+{
+  FOFormula f;
+}
+{
+  f = ImplicationFormula()
+  { return f; }
+}
+
+Sentence SentenceFormula() :
+{
+  FOFormula f;
+}
+{
+  f = Formula()
+  { return new Sentence(f); }
+}
+
+/* ---------- precedence ---------- */
+
+FOFormula ImplicationFormula() :
+{
+  FOFormula left;
+  FOFormula right;
+}
+{
+  left = DisjunctionFormula()
+  (
+    <IMPLIES> right = ImplicationFormula()
+    { left = new Implication(left, right); }
+  )?
+  { return left; }
+}
+
+FOFormula DisjunctionFormula() :
+{
+  FOFormula left;
+  FOFormula right;
+}
+{
+  left = ConjunctionFormula()
+  (
+    <OR> right = ConjunctionFormula()
+    { left = new Disjunction(left, right); }
+  )*
+  { return left; }
+}
+
+FOFormula ConjunctionFormula() :
+{
+  FOFormula left;
+  FOFormula right;
+}
+{
+  left = UnaryFormula()
+  (
+    <AND> right = UnaryFormula()
+    { left = new Conjunction(left, right); }
+  )*
+  { return left; }
+}
+
+FOFormula UnaryFormula() :
+{
+  FOFormula f;
+  Variable v;
+}
+{
+    <NOT> f = UnaryFormula()
+    { return new Negation(f); }
+
+  | <FORALL> v = VariableToken() f = UnaryFormula()
+    { return new ForAll(v, f); }
+
+  | <EXISTS> v = VariableToken() f = UnaryFormula()
+    { return new Exists(v, f); }
+
+  | <LPAREN> f = Formula() <RPAREN>
+    { return f; }
+
+  | f = AtomicFormula()
+    { return f; }
+}
+
+Variable VariableToken() :
+{
+  Token t;
+}
+{
+  t = <IDENT>
+  { return new VariableImp(t.image); }
+}
+
+FOFormula AtomicFormula() :
+{
+  String s;
+}
+{
+  {
+    s = readAtomicText();
+    return makeEquationFormula(s);
+  }
+}

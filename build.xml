@@ -43,7 +43,7 @@
     </javac>
   </target>
 
-  <target name="compile-dist" depends="compile-dist-src,compile-dist-work"/>
+  <target name="compile-dist" depends="compile-dist-src,compile-dist-work, generate-fol-parser"/>
 
   <target name="compile-dist-src">
     <mkdir dir="${class.dir}"/>
@@ -68,6 +68,16 @@
     </javac>
   </target>
 
+  <target name="generate-fol-parser">
+    <java classname="javacc" fork="true" failonerror="true">
+      <classpath>
+        <pathelement location="${jar.dir}/javacc.jar"/>
+      </classpath>
+      <arg value="-OUTPUT_DIRECTORY=org/uacalc/fol/grammar"/>
+      <arg value="org/uacalc/fol/grammar/FOParser.jj"/>
+    </java>
+  </target>
+
   <target name="dist-files">
     <!-- Create the distribution directory -->
     <mkdir dir="${dist.dir}/lib"/>
@@ -79,6 +89,14 @@
     </copy>
     <copy todir="${class.dir}/algebras" overwrite="yes">
        <fileset dir="${algs.dir}"/>
+    </copy>
+  </target>
+
+  <target name="copy-lua-files">
+    <copy todir="${class.dir}">
+      <fileset dir="${src.dir}">
+        <include name="org/uacalc/io/lua/**/*.lua"/>
+      </fileset>
     </copy>
   </target>
 
@@ -96,7 +114,7 @@
 
   <target name="dist-nb" depends="dist-jar-nb"/>
 
-  <target name="dist-jar-nb" depends="clean,dist-files,compile-dist-src">
+  <target name="dist-jar-nb" depends="clean,dist-files,compile-dist-src,copy-lua-files">
     <mkdir dir="${dist.dir}/lib"/>
     <jar jarfile="${dist.dir}/lib/uacalc.jar" 
          manifest="${manifest.file}"
@@ -108,7 +126,7 @@
   </target>
 
 
-  <target name="dist-jar-signed" depends="clean,dist-files,compile-dist-src">
+  <target name="dist-jar-signed" depends="clean,dist-files,compile-dist-src,copy-lua-files">
     <!-- Create the distribution directory -->
     <mkdir dir="${dist.dir}/lib"/>
     <jar jarfile="${dist.dir}/lib/uacalc.jar" 
@@ -138,7 +156,7 @@
 -->
   </target>
 
-  <target name="dist-jar" depends="clean,dist-files,compile-dist-src">
+  <target name="dist-jar" depends="clean,dist-files,compile-dist-src,copy-lua-files">
     <!-- Create the distribution directory -->
     <mkdir dir="${dist.dir}/lib"/>
     <jar jarfile="${dist.dir}/lib/uacalc.jar" 
@@ -148,7 +166,7 @@
 
   <target name="javadoc" depends="compile-dist">
     <mkdir dir="${javadoc.dir}"/>
-    <javadoc packagenames="org.uacalc.alg,org.uacalc.alg.conlat,org.uacalc.alg.sublat,org.uacalc.alg.op,org.uacalc.alg.example,org.uacalc.io,org.uacalc.util,org.uacalc.ui,org.uacalc.ui.util,org.uacalc.ui.images,org.uacalc.ui.table,org.uacalc.ui.tm,org.uacalc.lat,org.uacalc.terms,org.uacalc.eq,org.uacalc.element,org.uacalc.nbui" 
+    <javadoc packagenames="org.uacalc.alg,org.uacalc.alg.conlat,org.uacalc.alg.sublat,org.uacalc.alg.op,org.uacalc.alg.example,org.uacalc.io, org.uacalc.io.lua,org.uacalc.util,org.uacalc.ui,org.uacalc.ui.util,org.uacalc.ui.images,org.uacalc.ui.table,org.uacalc.ui.tm,org.uacalc.lat,org.uacalc.terms,org.uacalc.eq,org.uacalc.element,org.uacalc.nbui" 
              sourcepath="${src.dir}"
              destdir="${javadoc.dir}"
              author="true"
@@ -163,7 +181,6 @@
   </target>
 
   <target name="clean">
-    <!-- Delete the ${build} and ${dist.dir} directory trees -->
     <delete dir="${class.dir}"/>
     <delete dir="${dist.dir}"/>
   </target>

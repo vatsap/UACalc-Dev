@@ -131,9 +131,9 @@ public class ConController {
           "The input size (" + inputSize + ") is pretty big; " +
           "putting this in a background task.", false);
       // for testing;
-      final int comTabIndex = 2;
-      if (uacalcUI.getTabbedPane().getSelectedIndex() != comTabIndex) {
-        uacalcUI.getTabbedPane().setSelectedIndex(comTabIndex);
+      final int conTabIndex = 4;
+      if (uacalcUI.getTabbedPane().getSelectedIndex() != conTabIndex) {
+        uacalcUI.getTabbedPane().setSelectedIndex(conTabIndex);
         uacalcUI.repaint();
       }
       uacalcUI.getComputationsController().setupCongruencesTask();
@@ -151,7 +151,7 @@ public class ConController {
     if (gAlg == null) return;
     SmallAlgebra alg = gAlg.getAlgebra();
     if (alg == null) return;
-    final int conTabIndex = 3;
+    final int conTabIndex = 4;
     if (uacalcUI.getTabbedPane().getSelectedIndex() != conTabIndex) {
       uacalcUI.getTabbedPane().setSelectedIndex(conTabIndex);
       uacalcUI.repaint();
@@ -207,7 +207,7 @@ public class ConController {
       
     }
     if (makeIfNull) { // only move to this window if makeIfNull is true
-      final int conTabIndex = 3;
+      final int conTabIndex = 4;
       if (uacalcUI.getTabbedPane().getSelectedIndex() != conTabIndex) {
         uacalcUI.getTabbedPane().setSelectedIndex(conTabIndex);
       }

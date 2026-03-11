@@ -7,6 +7,7 @@ import org.uacalc.alg.op.AbstractOperation;
 import org.uacalc.alg.GeneralAlgebra;
 import org.uacalc.alg.SmallAlgebra;
 import org.uacalc.alg.op.Operation;
+import org.uacalc.alg.op.OperationSymbol;
 import org.uacalc.util.*;
 
 /**
@@ -542,6 +543,10 @@ public class FiniteField extends GeneralAlgebra implements SmallAlgebra {
         }
       }
     }
+  }
+
+  public void renameOperation(OperationSymbol old_op_sym, String new_symbol){
+    
   }
 
 

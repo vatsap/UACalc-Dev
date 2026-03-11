@@ -1,0 +1,1 @@
+java -cp jars/javacc.jar javacc \-OUTPUT_DIRECTORY=org/uacalc/fol/grammar org/uacalc/fol/grammar/FOParser.jj 

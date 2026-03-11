@@ -157,5 +157,9 @@ System.out.println("tmp.length = " + tmp.length );
     UnaryTermsMonoid m = new UnaryTermsMonoid(alg);
     AlgebraIO.writeAlgebraFile(m, "/tmp/D8-2.ua");
   }
+  
+  public void renameOperation(OperationSymbol old_op_sym, String new_symbol){
+    
+  }
 
 }

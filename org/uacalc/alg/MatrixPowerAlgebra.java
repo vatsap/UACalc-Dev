@@ -10,6 +10,7 @@ import org.uacalc.alg.SmallAlgebra.AlgebraType;
 import org.uacalc.alg.conlat.*;
 import org.uacalc.alg.op.AbstractOperation;
 import org.uacalc.alg.op.Operation;
+import org.uacalc.alg.op.OperationSymbol;
 import org.uacalc.alg.op.Operations;
 import org.uacalc.alg.sublat.*;
 import org.uacalc.io.AlgebraIO;
@@ -98,5 +99,9 @@ public class MatrixPowerAlgebra extends GeneralAlgebra implements SmallAlgebra {
     public AlgebraType algebraType() {
       return AlgebraType.MATRIX_POWER;
     }
+
+    public void renameOperation(OperationSymbol old_op_sym, String new_symbol){
+    
+  }
 
 }

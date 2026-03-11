@@ -195,6 +195,7 @@ public class AlgebraEditorController {
     if (n == JOptionPane.YES_OPTION) {
       removeCurrentOperation();
       uacalc.getMainController().getCurrentAlgebra().setNeedsSave(true);
+      getMainController().algebraStructureChanged();
     }
   }
   
@@ -213,6 +214,7 @@ public class AlgebraEditorController {
     int arity = getArityDialog();
     if (arity == -1) return;
     addOperation(name, arity);
+    getMainController().algebraStructureChanged();
   }
   
   public void makeBasicAlg() {
@@ -234,7 +236,7 @@ public class AlgebraEditorController {
     gAlg.setNeedsSave(true);
     //getActions().setDirty(true);
     getMainController().setCurrentFile(null);
-
+    getMainController().algebraStructureChanged();
   }
   
   private MainController getMainController() { return uacalc.getMainController(); }
@@ -283,8 +285,41 @@ public class AlgebraEditorController {
     uacalc.repaint();
     final MainController mc = getMainController();
     mc.getPropertyChangeSupport().firePropertyChange(MainController.ALGEBRA_CHANGED, null, null);
+    getMainController().algebraStructureChanged();
   }
-  
+
+  public void renameOp() {
+    if (opList == null) {  // algebra 
+      uacalc.beep();
+      return;
+    }
+    String name = getOpNameDialog();
+    if (name == null) return;
+    renameOperation(name);
+  }
+
+  private void renameOperation(String name) {
+    OperationWithDefaultValue op = getCurrentOperation();
+    OperationSymbol old_sym = getCurrentSymbol();
+    OperationSymbol new_sym = new OperationSymbol(name, op.arity());
+    if (!validSymbol(new_sym)) return;
+    opMap.remove(old_sym);
+    op.setSymbol(new_sym);
+    int i = symbolList.indexOf(old_sym);
+    symbolList.remove(old_sym);
+    symbolList.add(i,new_sym);
+    opMap.put(new_sym, op);
+    getMainController().getCurrentAlgebra().setNeedsSave(true);
+    getMainController().getCurrentAlgebra().getAlgebra().updateSimilarityType();
+    setOpsCB();
+    uacalc.getOpsComboBox().setSelectedIndex(i);
+    uacalc.getOpTable().repaint();
+    uacalc.repaint();
+    final MainController mc = getMainController();
+    mc.getPropertyChangeSupport().firePropertyChange(MainController.ALGEBRA_CHANGED, null, null);
+    mc.algebraStructureChanged();
+  }
+
   /*
   public void addOperation(Operation oper) {
     OperationSymbol sym = oper.symbol();
@@ -406,6 +441,7 @@ public class AlgebraEditorController {
       }
       uacalc.getAddOpButton().setEnabled(true);
       uacalc.getDelOpButton().setEnabled(true);
+      uacalc.getRenameOpButton().setEnabled(true);
       uacalc.getMakeBasicAlgButton().setEnabled(false);
       setOpsCB();
       return;
@@ -421,6 +457,7 @@ public class AlgebraEditorController {
       }
       uacalc.getAddOpButton().setEnabled(false);
       uacalc.getDelOpButton().setEnabled(false);
+      uacalc.getRenameOpButton().setEnabled(false);
       uacalc.getMakeBasicAlgButton().setEnabled(true);
       setOpsCB();
       return;

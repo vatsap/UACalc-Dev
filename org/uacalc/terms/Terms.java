@@ -50,19 +50,23 @@ public class Terms {
    */
   private static List<String> getArgumentStrings(String str) {
     List<String> ans = new ArrayList<>();
+    if (str == null) return ans;
+
+    str = str.trim();
+    if (str.length() == 0) return ans;   // This is for constants
+
     int start = 0;
     int depth = 0;
     for (int i = 0; i < str.length(); i++) {
-      String elt = str.substring(i,i+1);
+      String elt = str.substring(i, i + 1);
       if (elt.equals("(")) depth++;
       if (elt.equals(")")) depth--;
       if (depth == 0 && elt.equals(",")) {
-        ans.add(str.substring(start, i));
+        ans.add(str.substring(start, i).trim());
         start = i + 1;
       }
     }
-    System.out.println("depth is " + depth);
-    ans.add(str.substring(start));
+    ans.add(str.substring(start).trim());
     return ans;
   }
   
